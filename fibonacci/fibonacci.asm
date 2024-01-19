@@ -90,6 +90,8 @@ fib_loop:
     ; loop until all 16-bit numbers are exhausted
     bcc fib_loop
 
+    rts
+
 
 
 

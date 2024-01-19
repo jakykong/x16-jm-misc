@@ -274,15 +274,17 @@ Current file: fibonacci.asm
 0008E6  1                   ; loop until all 16-bit numbers are exhausted
 0008E6  1  90 D5            bcc fib_loop
 0008E8  1               
-0008E8  1               
-0008E8  1               
-0008E8  1               
-0008E8  1               
-0008E8  1               
-0008E8  1               
-0008E8  1               
-0008E8  1               
-0008E8  1               
-0008E8  1               
-0008E8  1               
-0008E8  1               
+0008E8  1  60               rts
+0008E9  1               
+0008E9  1               
+0008E9  1               
+0008E9  1               
+0008E9  1               
+0008E9  1               
+0008E9  1               
+0008E9  1               
+0008E9  1               
+0008E9  1               
+0008E9  1               
+0008E9  1               
+0008E9  1               
