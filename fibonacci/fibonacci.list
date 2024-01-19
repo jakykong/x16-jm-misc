@@ -1,0 +1,288 @@
+ca65 V2.19 - Git 8aa59e4
+Main file   : fibonacci.asm
+Current file: fibonacci.asm
+
+000000r 1               ; Print all 16-bit fibonacci numbers to the screen, space-separated.
+000000r 1               
+000000r 1               ; Commander X16 boilerplate
+000000r 1               .org $080D
+00080D  1               
+00080D  1               .segment "STARTUP"
+00080D  1               .segment "INIT"
+00080D  1               .segment "ONCE"
+00080D  1               .segment "CODE"
+00080D  1  4C A0 08        jmp start         ; absolute
+000810  1               
+000810  1               ; selected PETSCII constants
+000810  1               NEWLINE = $0D
+000810  1               SPACE = $20
+000810  1               COLON = $3A
+000810  1               LTR_A = $41
+000810  1               LTR_B = $42
+000810  1               LTR_C = $43
+000810  1               LTR_E = $45
+000810  1               LTR_F = $46
+000810  1               LTR_I = $49
+000810  1               LTR_M = $4D
+000810  1               LTR_N = $4E
+000810  1               LTR_O = $4F
+000810  1               LTR_R = $52
+000810  1               LTR_S = $53
+000810  1               LTR_U = $55
+000810  1               
+000810  1               
+000810  1               introtext: ; "FIBONACCI NUMBERS: \n"
+000810  1  46 49 42 4F      .byte LTR_F, LTR_I, LTR_B, LTR_O, LTR_N, LTR_A, LTR_C, LTR_C, LTR_I, SPACE, LTR_N, LTR_U, LTR_M, LTR_B, LTR_E, LTR_R, LTR_S, COLON, NEWLINE, $00
+000814  1  4E 41 43 43  
+000818  1  49 20 4E 55  
+000824  1               
+000824  1               ; Fibonacci registers
+000824  1               PREV1 = $22
+000824  1               PREV2 = $24
+000824  1               NEXT = $26
+000824  1               
+000824  1               
+000824  1               .include "util.asm"
+000824  2               ; Import all libraries in dependency order
+000824  2               ; For normal library usage, include this file.
+000824  2               ; For partial library usage, reference this for dependencies.
+000824  2               
+000824  2               .include "intmath.asm"
+000824  3               ; Integer Math Routines (for Commander X16)
+000824  3               ; Code by Jack Mudge <jack@mudge.dev>, but credited as needed.
+000824  3               ; Anything that is not otherwise licensed (see in-line credits) is released
+000824  3               ; to the public domain. No warranties, guarantees, etc.
+000824  3               
+000824  3               OPER1 = $44
+000824  3               OPER2 = $46
+000824  3               RES1 = $48
+000824  3               ERROR = $4A
+000824  3               
+000824  3               ; Convenience symbols for division
+000824  3               DIVIDEND = OPER1
+000824  3               DIVISOR = OPER2
+000824  3               QUOTIENT = RES1
+000824  3               
+000824  3               ; Unsigned 16-bit Division With Remainder
+000824  3               ; Inputs:  OPER1 = Dividend
+000824  3               ;          OPER2 = Divisor
+000824  3               ; Outputs: OPER1 = Quotient (result)
+000824  3               ;          RES1  = Remainder
+000824  3               ;          ERROR = 1 if div/0, 0 otherwise.
+000824  3               ;          Registers: A, X, Y unchanged
+000824  3               .proc div16
+000824  3                  ; save register state
+000824  3  48              pha
+000825  3  DA              phx
+000826  3  5A              phy
+000827  3               
+000827  3                  ; Check if DIVISOR == 0
+000827  3  A5 46           lda DIVISOR
+000829  3  D0 07           bne :+
+00082B  3  A5 47           lda DIVISOR+1
+00082D  3  D0 03           bne :+
+00082F  3  4C 6A 08        jmp divzero
+000832  3                  : ; not divzero
+000832  3               
+000832  3                  ; result starts at 0
+000832  3  A9 00           lda #0
+000834  3  85 48           sta QUOTIENT
+000836  3  85 49           sta QUOTIENT+1
+000838  3               
+000838  3                  ; Always start with at least one trial subtraction
+000838  3  A2 01           ldx #1
+00083A  3               
+00083A  3                  ; Rotate DIVISOR until high bit = 1 so subtractions are positioned correctly
+00083A  3                  : ; start rotate loop
+00083A  3  A5 47           lda DIVISOR+1
+00083C  3  30 07           bmi :+
+00083E  3  06 46           asl DIVISOR
+000840  3  26 47           rol DIVISOR+1
+000842  3  E8              inx ; number of shifts here corresponds to number of subtraction steps
+000843  3  80 F5           bra :-
+000845  3                  : ; end rotate loop
+000845  3               
+000845  3               loop:
+000845  3                  ; Make next lowest bit of result available for setting in next iteration
+000845  3                  ; on first iteration will rotate #$0000
+000845  3  06 48           asl QUOTIENT
+000847  3  26 49           rol QUOTIENT+1
+000849  3               
+000849  3                  ; try subtraction
+000849  3  38              sec
+00084A  3  A5 44           lda DIVIDEND
+00084C  3  E5 46           sbc DIVISOR
+00084E  3  A8              tay
+00084F  3  A5 45           lda DIVIDEND+1
+000851  3  E5 47           sbc DIVISOR+1
+000853  3               
+000853  3                  ; result bit = 1 and new remainder if subtraction succeeds
+000853  3  90 06           bcc :+
+000855  3  E6 48           inc QUOTIENT
+000857  3  84 44           sty DIVIDEND
+000859  3  85 45           sta DIVIDEND+1
+00085B  3                  :
+00085B  3               
+00085B  3                  ; shift DIVISOR into next position
+00085B  3  46 47           lsr DIVISOR+1
+00085D  3  66 46           ror DIVISOR
+00085F  3               
+00085F  3  CA              dex
+000860  3  D0 E3           bne loop
+000862  3               
+000862  3               done:
+000862  3                  ; DIVIDEND has accumulated the remainder
+000862  3                  ; QUOTIENT should already contain the divided result.
+000862  3  A9 00           lda #0
+000864  3  85 4A           sta ERROR ; no errors
+000866  3  7A              ply
+000867  3  FA              plx
+000868  3  68              pla
+000869  3  60              rts
+00086A  3               
+00086A  3               
+00086A  3               divzero:
+00086A  3                  ; handle division by zero by flagging error
+00086A  3  A9 01           lda #$01
+00086C  3  85 4A           sta ERROR ; error occurred
+00086E  3  7A              ply
+00086F  3  FA              plx
+000870  3  68              pla
+000871  3  60              rts
+000872  3               .endproc
+000872  3               
+000872  3               
+000872  3               
+000872  2               .include "io.asm" ; Depends: intmath.asm
+000872  3               ; I/O routines targeting the Commander X16
+000872  3               ;
+000872  3               
+000872  3               ; Dependencies (be sure they're included somewhere):
+000872  3               ; .include "intmath.asm"
+000872  3               
+000872  3               ; Print a 16-bit unsigned number as base 10
+000872  3               ; Inputs: A - low byte
+000872  3               ;         Y - high byte
+000872  3               ; Outputs: Side effect - decimal digits printed to terminal
+000872  3               ;          No zero padding - use pru1610z
+000872  3               ;
+000872  3               
+000872  3               CHROUT = $FFD2
+000872  3               
+000872  3               
+000872  3               ; PRint Unsigned 16 bit in Base 10
+000872  3               .proc pru1610
+000872  3  A2 00           ldx #0
+000874  3               
+000874  3               stack:
+000874  3                  ; Divide and update
+000874  3  85 44           sta DIVIDEND
+000876  3  84 45           sty DIVIDEND+1
+000878  3  A9 0A           lda #10
+00087A  3  85 46           sta DIVISOR
+00087C  3  A9 00           lda #0
+00087E  3  85 47           sta DIVISOR+1
+000880  3  20 24 08        jsr div16
+000883  3               
+000883  3                  ; Next digit is remainder
+000883  3  A5 44           lda DIVIDEND
+000885  3  48              pha
+000886  3  E8              inx ; # digits pushed to stack
+000887  3               
+000887  3                  ; quotient carries forward
+000887  3  A5 48           lda QUOTIENT
+000889  3  A4 49           ldy QUOTIENT+1
+00088B  3               
+00088B  3                  ; No more digits?
+00088B  3                  ; checked late so initial 0 will still print a digit (0)
+00088B  3  C9 00           cmp #0
+00088D  3  D0 E5           bne stack
+00088F  3  C0 00           cpy #0
+000891  3  D0 E1           bne stack
+000893  3  80 00           bra print
+000895  3               
+000895  3               print:
+000895  3                  ; Pop all of the stacked digits and output
+000895  3  68              pla
+000896  3  18              clc
+000897  3  69 30           adc #$30
+000899  3  20 D2 FF        jsr CHROUT
+00089C  3               
+00089C  3  CA              dex
+00089D  3  D0 F6           bne print
+00089F  3               
+00089F  3  60              rts
+0008A0  3               
+0008A0  3               .endproc
+0008A0  3               
+0008A0  3               
+0008A0  3               
+0008A0  2               
+0008A0  2               
+0008A0  2               
+0008A0  2               
+0008A0  1               
+0008A0  1               start:
+0008A0  1  A2 00            ldx #0
+0008A2  1               
+0008A2  1               introtext_loop:
+0008A2  1  BD 10 08         lda introtext,x
+0008A5  1  F0 06            beq fib_start
+0008A7  1  20 D2 FF         jsr CHROUT
+0008AA  1  E8               inx
+0008AB  1  80 F5            bra introtext_loop
+0008AD  1               
+0008AD  1               fib_start:
+0008AD  1                   ; for sequence to start 1, 1...
+0008AD  1  A9 01            lda #$01
+0008AF  1  85 26            sta NEXT
+0008B1  1  A9 00            lda #$00
+0008B3  1  85 27            sta NEXT+1
+0008B5  1  85 22            sta PREV1
+0008B7  1  85 23            sta PREV1+1
+0008B9  1  85 24            sta PREV2
+0008BB  1  85 25            sta PREV2+1
+0008BD  1               
+0008BD  1               fib_loop:
+0008BD  1                   ; print number
+0008BD  1  A5 26            lda NEXT
+0008BF  1  A4 27            ldy NEXT+1
+0008C1  1  20 72 08         jsr pru1610
+0008C4  1               
+0008C4  1  A9 20            lda #SPACE
+0008C6  1  20 D2 FF         jsr CHROUT
+0008C9  1               
+0008C9  1                   ; rotate "registers" dropping prev2
+0008C9  1  A5 22            lda PREV1
+0008CB  1  85 24            sta PREV2
+0008CD  1  A5 23            lda PREV1+1
+0008CF  1  85 25            sta PREV2+1
+0008D1  1  A5 26            lda NEXT
+0008D3  1  85 22            sta PREV1
+0008D5  1  A5 27            lda NEXT+1
+0008D7  1  85 23            sta PREV1+1
+0008D9  1               
+0008D9  1                   ; add together PREV*
+0008D9  1  18               clc
+0008DA  1  A5 22            lda PREV1
+0008DC  1  65 24            adc PREV2
+0008DE  1  85 26            sta NEXT
+0008E0  1  A5 23            lda PREV1+1
+0008E2  1  65 25            adc PREV2+1
+0008E4  1  85 27            sta NEXT+1
+0008E6  1               
+0008E6  1                   ; loop until all 16-bit numbers are exhausted
+0008E6  1  90 D5            bcc fib_loop
+0008E8  1               
+0008E8  1               
+0008E8  1               
+0008E8  1               
+0008E8  1               
+0008E8  1               
+0008E8  1               
+0008E8  1               
+0008E8  1               
+0008E8  1               
+0008E8  1               
+0008E8  1               
+0008E8  1               
