@@ -1,2 +1,6 @@
-# Ignore screenshots saved by x16emu
+# Screenshots saved by x16emu
 *.png
+
+# Object and list files are intermediate from source code
+*.list
+*.o
